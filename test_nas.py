@@ -121,6 +121,55 @@ class Integration(unittest.TestCase):
             self.assertEqual(out.returncode, 0, out.stderr)
             self.assertIn('refusal', out.stdout.lower())
 
+    def test_dig_recovers_deleted_file_from_fixture_repository(self):
+        import gzip, hashlib
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / 'share'; root.mkdir()
+            body = b'Invoice alpha project\n'
+            (root / 'invoice.txt').write_bytes(body)
+            state = Path(d) / 'state'
+            run = make_runner(root, state)
+            self.assertEqual(run('scan', root, '--allow-local').returncode, 0)
+            (root / 'invoice.txt').unlink()
+            self.assertEqual(run('scan', root, '--allow-local').returncode, 0)
+
+            # A one-snapshot backup repository in the physis-data-backup
+            # layout: gzip manifest + sha256-addressed chunks.
+            repo = Path(d) / 'backups' / 'repository'
+            (repo / 'snapshots').mkdir(parents=True)
+            (repo / 'chunks').mkdir()
+            sha = hashlib.sha256(body).hexdigest()
+            (repo / 'chunks' / sha).write_bytes(body)
+            manifest = {'format': 1, 'files': {'invoice.txt': {
+                'chunks': [sha], 'size': len(body), 'sha256': sha, 'mode': 0o600}}}
+            (repo / 'snapshots' / '20260101T000000000000Z.json.gz').write_bytes(
+                gzip.compress(json.dumps(manifest).encode()))
+
+            dug = run('dig', root, 'invoice.txt', '--allow-local',
+                      '--repository', repo)
+            self.assertEqual(dug.returncode, 0, dug.stderr)
+            self.assertIn('recovered', dug.stdout)
+            self.assertIn('20260101T000000000000Z', dug.stdout)
+            recovered = state / 'recovered' / 'invoice.txt'
+            self.assertEqual(recovered.read_bytes(), body, 'exact bytes')
+            self.assertFalse((root / 'invoice.txt').exists(),
+                             'dig never writes into the share')
+
+    def test_dig_reports_absence_as_a_finding(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / 'share'; root.mkdir()
+            (root / 'a.txt').write_text('alpha\n')
+            state = Path(d) / 'state'
+            run = make_runner(root, state)
+            self.assertEqual(run('scan', root, '--allow-local').returncode, 0)
+            repo = Path(d) / 'backups' / 'repository'
+            (repo / 'snapshots').mkdir(parents=True)
+            (repo / 'chunks').mkdir()
+            dug = run('dig', root, 'never/existed.txt', '--allow-local',
+                      '--repository', repo)
+            self.assertNotEqual(dug.returncode, 0, 'absence must exit nonzero')
+            self.assertIn('not in any retained snapshot', dug.stderr)
+
     def test_state_stays_outside_share(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d) / 'share'; root.mkdir()

@@ -57,6 +57,23 @@ def run_json(physis, env, args, timeout=60):
         return False, {'error': 'physis did not emit JSON', 'raw': text[:400]}
 
 
+# ---------- dig (recovery from a backup repository) ----------
+
+def dig_plan(selected, repo):
+    """Decide what pressing `d` does, purely.
+
+    Returns ('no-selection', None), ('no-repo', None) or ('run', (rel, repo)).
+    The honesty rules live here so they are testable without a TUI: no
+    selection and no repository are both reported as exactly what they are,
+    never as a recovery.
+    """
+    if not selected:
+        return 'no-selection', None
+    if not repo:
+        return 'no-repo', None
+    return 'run', (selected.removeprefix('file:'), repo)
+
+
 # ---------- scan modes ----------
 
 SCAN_MODES = {
@@ -198,6 +215,7 @@ class NasTui(App):
         ('4', 'tab("correct")', 'correct'),
         ('a', 'toggle_mode', 'algo/semantic'),
         ('r', 'refresh_tree', 're-scan tree'),
+        ('d', 'dig_selected', 'dig'),
     ]
     TABS = ['search', 'qa', 'evidence', 'correct']
 
@@ -208,6 +226,9 @@ class NasTui(App):
         self.mode = 'algo'
         self.selected = None
         self.cwd = ''  # relative path in the world
+        # The share root the world was scanned from; dig passes it as --path
+        # exactly like every other command. Set via --share (default '.').
+        self.share_root = os.environ.get('PHYSIS_NAS_SHARE', '.')
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=False)
@@ -317,6 +338,52 @@ class NasTui(App):
     def action_tab(self, name):
         self.query_one('#tabs', Tabs).active = name
 
+    def action_dig_selected(self):
+        """Dig the selected file out of a backup repository, honestly.
+
+        Needs PHYSIS_NAS_BACKUP_REPO in the environment pointing at a
+        physis-data-backup repository for this share. Without it, say so —
+        never pretend a recovery happened.
+        """
+        kind, payload = dig_plan(self.selected, os.environ.get('PHYSIS_NAS_BACKUP_REPO', ''))
+        if kind == 'no-selection':
+            self._safe(self.write_out, [
+                '[b]dig[/b] no file selected — type a path in the evidence tab first',
+                '',
+            ])
+            return
+        if kind == 'no-repo':
+            self._safe(self.write_out, [
+                '[b]dig[/b] no backup repository configured — set PHYSIS_NAS_BACKUP_REPO',
+                'to a physis-data-backup repository for this share and retry',
+                '',
+            ])
+            return
+        rel, repo = payload
+        self._safe(self.write_out, [f'[b]dig[/b] {rel} ...', ''])
+        self.run_bg(lambda: self._do_dig(rel, repo), tab='out')
+
+    def _do_dig(self, rel, repo):
+        dest = Path(os.environ.get('PHYSIS_NAS_STATE', Path.home() / '.local/share/physis-nas')) \
+            / 'recovered' / Path(rel).name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        ok, text = run_physis(self.physis, self.env, [
+            'dig', rel, '--root', self.share_root,
+            '--repository', repo, '--out', str(dest), '--json',
+        ], timeout=120)
+        if not ok:
+            # A failed dig must look failed: relay the typed absence or the
+            # hash refusal verbatim.
+            self._safe(self.write_out, [f'[b]dig {rel}[/b] refused:', text, ''])
+            return
+        data = json.loads(text) if text.strip().startswith('{') else {}
+        lines = [f'[b]dig {rel}[/b] recovered -> {data.get("written_to") or dest}',
+                 f'  source: {data.get("source_snapshot")} ({data.get("size")} bytes)']
+        if data.get('tombstone_seq') is not None:
+            lines.append(f'  deleted in the world; last seen seq {data["tombstone_seq"]}')
+        lines.append('  every chunk sha256-verified against the manifest')
+        self._safe(self.write_out, lines + [''])
+
     def action_toggle_mode(self):
         self.mode = 'semantic' if self.mode == 'algo' else 'algo'
         self.query_one('#mode-line', Static).update(f'MODE: {self.mode}  (a to toggle)')
@@ -328,10 +395,13 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--physis', default=DEFAULT_PHYSIS)
     p.add_argument('--store', default=DEFAULT_STORE)
+    p.add_argument('--share', default='.',
+                   help='Share root the world was scanned from (also: PHYSIS_NAS_SHARE)')
     a = p.parse_args()
     if not Path(a.physis).is_file():
         print(f'physis-nas-tui: physis binary not found at {a.physis}', file=sys.stderr)
         return 1
+    os.environ.setdefault('PHYSIS_NAS_SHARE', a.share)
     NasTui(a.physis, a.store).run()
     return 0
 

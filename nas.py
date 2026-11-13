@@ -10,6 +10,13 @@ Commands:
   duplicates  group files by content hash (size-capped, read-only)
   casefile    compose a markdown inventory report: scope, chronology, duplicates, limits
   ask Q       model-free question over the share's world; refusals are printed as refusals
+  dig PATH    recover a deleted file's exact bytes from a backup repository
+              (joins the world's tombstone to the newest snapshot manifest
+              holding the file; every chunk is hash-verified). Requires
+              --repository pointing at a physis-data-backup repository whose
+              manifest paths are relative to this share. Recovered bytes are
+              written OUTSIDE the share (default: <state>/recovered/) — the
+              share stays read-only.
   serve       hand the share's world to an agent over MCP stdio (replaces this process)
 
 Everything is read-only on the share. State lives outside the share, one store
@@ -243,6 +250,35 @@ def cmd_ask(physis, env, root, question):
     return 0
 
 
+def cmd_dig(physis, env, root, state, args):
+    """Recover a deleted file from a backup repository, honestly labelled.
+
+    The recovered bytes are written outside the share; the report names the
+    source snapshot and the tombstone sequence. Absence is printed as a
+    finding (the snapshot span searched), never guessed around.
+    """
+    dest = args.out or (Path(state) / 'recovered' / Path(args.path).name)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    result = run_physis(physis, env, [
+        'dig', args.path, '--root', str(root),
+        '--repository', str(args.repository), '--out', str(dest), '--json',
+    ])
+    if result.returncode:
+        # physis dig exits 2 with the typed absence (or a hash refusal) on
+        # stderr. Relay it verbatim: a failed dig must look failed.
+        print(result.stderr.strip() or result.stdout.strip(), file=sys.stderr)
+        return result.returncode
+    report = json.loads(result.stdout)
+    print(f"recovered {report['path']} -> {report.get('written_to') or dest}")
+    print(f"  source: {report['source_snapshot']} ({report['size']} bytes)")
+    if report.get('tombstone_seq') is not None:
+        print(f"  deleted in the world; last seen seq {report['tombstone_seq']}")
+    else:
+        print("  no tombstone recorded for this path (still live, or never scanned)")
+    print("  every chunk sha256-verified against the manifest")
+    return 0
+
+
 def cmd_serve(physis, env, root):
     os.execvpe(physis, [physis, 'serve', '--stdio', '--path', str(root)], env)
 
@@ -254,7 +290,7 @@ def main():
     sub = p.add_subparsers(dest='command', required=True)
     for name, need_share in (('scan', True), ('search', True), ('changes', True), ('seal', True),
                              ('verify', True), ('duplicates', True), ('casefile', True),
-                             ('ask', True), ('serve', True)):
+                             ('ask', True), ('dig', True), ('serve', True)):
         cmd = sub.add_parser(name)
         if need_share:
             cmd.add_argument('share', type=Path, help='Exact mount point, not a subdirectory')
@@ -278,6 +314,12 @@ def main():
             cmd.add_argument('--size-cap', type=int, default=DEFAULT_SIZE_CAP)
         if name == 'casefile':
             cmd.add_argument('--limit', type=int, default=50)
+        if name == 'dig':
+            cmd.add_argument('path', help='Share-relative path (or file:<rel> id) as the world knows it')
+            cmd.add_argument('--repository', required=True, type=Path,
+                             help='Backup repository to dig in (physis-data-backup layout)')
+            cmd.add_argument('--out', type=Path, default=None,
+                             help='Where to write the recovered bytes (default: <state>/recovered/<basename>)')
     a = p.parse_args()
     try:
         if a.command == 'duplicates':
@@ -299,6 +341,8 @@ def main():
             return cmd_casefile(a.physis, env, root, store, a)
         if a.command == 'ask':
             return cmd_ask(a.physis, env, root, a.question)
+        if a.command == 'dig':
+            return cmd_dig(a.physis, env, root, a.state, a)
         if a.command == 'serve':
             return cmd_serve(a.physis, env, root)
         return 2

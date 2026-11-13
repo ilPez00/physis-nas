@@ -18,6 +18,21 @@ class FakeRunner:
         return self.script.pop(0)
 
 
+class DigPlanTests(unittest.TestCase):
+    def test_no_selection_is_reported_as_no_selection(self):
+        kind, payload = nas_tui.dig_plan(None, '/repo')
+        self.assertEqual((kind, payload), ('no-selection', None))
+
+    def test_no_repository_is_reported_as_no_repository(self):
+        kind, payload = nas_tui.dig_plan('file:invoice.txt', '')
+        self.assertEqual((kind, payload), ('no-repo', None))
+
+    def test_ready_selection_strips_the_file_prefix(self):
+        kind, payload = nas_tui.dig_plan('file:invoice.txt', '/repo')
+        self.assertEqual(kind, 'run')
+        self.assertEqual(payload, ('invoice.txt', '/repo'))
+
+
 class ScanRenderTests(unittest.TestCase):
     def test_algo_mode_labels_both_engines_and_reports_empty(self):
         data = [(['query', 'test'], {'results': ['file:a.txt']}), (['search', 'test'], {'results': []})]

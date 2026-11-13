@@ -73,13 +73,38 @@ local state files are written. The mount-point check does not establish the
 identity of the mounted device or share; do not re-use an index for a
 different share.
 
+## TUI
+
+```sh
+python3 nas_tui.py                       # uses the default physis binary + world store
+python3 nas_tui.py --store /path/to/store
+```
+
+A selector-driven console over one physis world model:
+
+- **Scan** — `a` toggles ALGO (structural query + BM25 body search) and
+  SEMANTIC (`physis explore` bounded retrieval packet with receipts and
+  freshness). Both are labeled with what they actually are; empty results are
+  reported as findings.
+- **Browse/zoom** — the sidebar walks the world's tree; typing an object id in
+  the Evidence tab zooms into its bounded context packet.
+- **Agentic Q/A** — model-free `chat` first (every answer carries its
+  evidence), falling back to primitive-compiled `ask` with confidence and
+  escalation shown. UNKNOWN and refusals are preserved as UNKNOWN and
+  refusals — nothing is dressed up.
+- **Evidence tracking** — `why`, `subject` (provenance chain) and `context`
+  for the selected object, in one view.
+- **Reality correction** — `remember` appends a correction note as a new
+  observation (append-only; nothing is rewritten), and `values` shows
+  effective fields with typed corrections applied in log order.
+
 ## Tests
 
 ```sh
 python3 -m unittest discover -v
 ```
 
-12 tests: scan/search integration, change deltas, seal/verify round-trip and
+17 tests: scan/search integration, change deltas, seal/verify round-trip and
 tamper detection, duplicate grouping and skip reporting, casefile report,
 refusal honesty, state-placement refusal, and the document inventory
 (allowlist, symlinks, partial-scan safety, path-exact search mapping). The

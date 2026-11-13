@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 SCRIPT = Path(__file__).with_name('nas.py')
-PHYSIS = Path('/home/gio/dev/physis-next/target/debug/physis')
+PHYSIS = Path('/home/gio/.local/lib/physis/bin/physis')
 
 
 def make_runner(root, state):

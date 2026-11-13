@@ -8,7 +8,7 @@ import unittest
 
 import document_inventory as di
 
-PHYSIS = Path('/home/gio/dev/physis-next/target/debug/physis')
+PHYSIS = Path('/home/gio/.local/lib/physis/bin/physis')
 
 class DocumentInventoryTests(unittest.TestCase):
     def test_allowlist_exclusions_and_symlinks(self):

@@ -25,7 +25,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-DEFAULT_PHYSIS = '/home/gio/dev/physis-next/target/debug/physis'
+DEFAULT_PHYSIS = '/home/gio/.local/lib/physis/bin/physis'
 DEFAULT_STORE = '/home/gio/.physis-nas-world'
 
 

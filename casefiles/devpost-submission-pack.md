@@ -6,12 +6,14 @@ BEFORE **Nov 15, 2026 11:45 PM PT** (= Nov 16, 08:45 CET).
 
 ## Uploads
 
-1. `physis-casefiles-draft-v4.zip` — the Skill (5 files, 12.7 KB unpacked,
-   official static checker: `static-pass`, 0 diagnostics).
-2. `physis-casefiles-proposal.pdf` — this proposal, 2 pages.
+1. `physis-casefiles-round1.zip` — the Skill (extracts to `physis-casefiles/`,
+   3 files, 12.7 KB unpacked, official static checker: `static-pass`, 0 diagnostics).
+2. `physis-casefiles-proposal.pdf` — A4, 3 pages, 48 KB (484 substantive words,
+   limit 500).
 
-Both are in this directory (`casefiles/`) and mirrored on air at
-`/home/gio/hackmaxxing/physis-nas/casefiles/`.
+Both are in this directory (`casefiles/`) and in `~/dev/physis-ugreen`
+(GitHub `ilPez00/physis-ugreen`); mirrored on air at
+`/home/gio/dev/physis-nas/casefiles/`.
 
 ## Project title
 

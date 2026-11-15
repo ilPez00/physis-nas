@@ -12,23 +12,23 @@ behind the submission.
 
 ## Requirements
 
-- Python 3 and a working `physis` CLI. On this machine the existing binary is
-  `/home/gio/dev/physis-next/target/debug/physis`.
+- Python 3 and a working `physis` CLI on `PATH`, or point at one with
+  `PHYSIS_BIN=/path/to/physis`.
 - A mounted NAS share. This tool does not mount shares or manage credentials.
 
 ## Commands
 
 ```sh
-P=/home/gio/dev/physis-next/target/debug/physis
-python3 nas.py --physis $P scan    /path/to/mount --max-files 4000 --exclude '*.secret'
-python3 nas.py --physis $P search  /path/to/mount invoice
-python3 nas.py --physis $P changes /path/to/mount --rescan   # delta since previous scan
-python3 nas.py --physis $P seal    /path/to/mount            # hash-sealed audit packet
-python3 nas.py --physis $P verify  /path/to/mount            # re-hash and verify it
-python3 nas.py --physis $P duplicates /path/to/mount         # same-content groups, size-capped
-python3 nas.py --physis $P casefile /path/to/mount            # markdown inventory report
-python3 nas.py --physis $P ask     /path/to/mount "state of file:invoice.txt"
-python3 nas.py --physis $P serve   /path/to/mount            # MCP stdio over this share's world
+P=$(command -v physis)   # or: export PHYSIS_BIN=/path/to/physis
+python3 nas.py --physis "$P" scan    /path/to/mount --max-files 4000 --exclude '*.secret'
+python3 nas.py --physis "$P" search  /path/to/mount invoice
+python3 nas.py --physis "$P" changes /path/to/mount --rescan   # delta since previous scan
+python3 nas.py --physis "$P" seal    /path/to/mount            # hash-sealed audit packet
+python3 nas.py --physis "$P" verify  /path/to/mount            # re-hash and verify it
+python3 nas.py --physis "$P" duplicates /path/to/mount         # same-content groups, size-capped
+python3 nas.py --physis "$P" casefile /path/to/mount            # markdown inventory report
+python3 nas.py --physis "$P" ask     /path/to/mount "state of file:invoice.txt"
+python3 nas.py --physis "$P" serve   /path/to/mount            # MCP stdio over this share's world
 ```
 
 - `changes` reports what the log recorded since the previous scan; use

@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -8,7 +9,7 @@ import unittest
 
 import document_inventory as di
 
-PHYSIS = Path('/home/gio/.local/lib/physis/bin/physis')
+PHYSIS = Path(os.environ.get('PHYSIS_BIN') or shutil.which('physis') or 'physis')
 
 class DocumentInventoryTests(unittest.TestCase):
     def test_allowlist_exclusions_and_symlinks(self):

@@ -22,11 +22,14 @@ PHYSIS_STORE_DIR points at; this tool never writes inside the observed root.
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
-DEFAULT_PHYSIS = '/home/gio/.local/lib/physis/bin/physis'
-DEFAULT_STORE = '/home/gio/.physis-nas-world'
+# Resolve the physis CLI from the environment or PATH — no machine-specific path.
+DEFAULT_PHYSIS = os.environ.get('PHYSIS_BIN') or shutil.which('physis') or 'physis'
+DEFAULT_STORE = os.path.expanduser(
+    os.environ.get('PHYSIS_STORE_DIR') or '~/.physis-nas-world')
 
 
 def build_env(store):

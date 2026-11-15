@@ -11,9 +11,8 @@ BEFORE **Nov 15, 2026 11:45 PM PT** (= Nov 16, 08:45 CET).
 2. `physis-casefiles-proposal.pdf` — A4, 3 pages, 48 KB (484 substantive words,
    limit 500).
 
-Both are in this directory (`casefiles/`) and in `~/dev/physis-ugreen`
-(GitHub `ilPez00/physis-ugreen`); mirrored on air at
-`/home/gio/dev/physis-nas/casefiles/`.
+Both are in this directory (`casefiles/`) and in the public repository
+`ilPez00/physis-ugreen`.
 
 ## Project title
 
